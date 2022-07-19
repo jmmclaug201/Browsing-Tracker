@@ -1,3 +1,17 @@
+// Notify When a New Window Takes the Foreground, or Chrome Closes
+chrome.windows.onFocusChanged.addListener((windowId) => {
+    if (windowId == chrome.windows.WINDOW_ID_NONE) {
+        updateCurrentPage(null);
+    }
+    else {
+        chrome.tabs.query({active : true, currentWindow : true})
+        .then((tabs) => {
+            let url = tabs[0].url;
+            updateCurrentPage(url);
+        });
+    }
+});
+
 // Notify When a Tab Changes Its URL
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.url) {
@@ -25,21 +39,19 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
         const website = changes['current_website'].oldValue,
               start = changes['current_time'].oldValue,
               end = changes['current_time'].newValue;
-        let delta = end - start;
+        let deltaSeconds = (end - start) / 1000;
         // Get the time_spent dictionary from local storage
         chrome.storage.local.get('time_spent', (items) => {
             time_dict = items['time_spent'];
             // Updadte the dictionary, or create a new entry if the entry DNE
-            if (time_dict) {
-                if (time_dict[website]) {
-                    time_dict[website] += delta;
-                }
-                else {
-                    time_dict[website] =  delta;
-                }
+            if (!time_dict) {
+                time_dict = {};
+            }
+            if (time_dict[website]) {
+                time_dict[website] += deltaSeconds;
             }
             else {
-                time_dict = {website : delta};
+                time_dict[website] =  deltaSeconds;
             }
             // Set time_spent to updated time_dict
             chrome.storage.local.set({'time_spent' : time_dict})
@@ -50,16 +62,22 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 // Updates Current Page to new page according to urlString
 function updateCurrentPage(urlString) {
-    let url;
+    let url, website;
     // Ensure URL is valid
     try {
-        url = new URL(urlString);
+        // null urlString implies no current website (Chrome closed)
+        if (urlString == null) {
+            website == null
+        }
+        else {
+            url = new URL(urlString);
+            website = url.host.replace("www.", "");    
+        }
     }
     catch (error) {
         console.warn("Invalid Urlstring: " + urlString);
         return;
     }
-    let website = url.host.replace("www.", "");
 
     // Update User's current_website to the new website
     const d = new Date();
@@ -69,6 +87,5 @@ function updateCurrentPage(urlString) {
         .then(function () {
             // Debug (Keep?)
             console.log("current_webiste updated to " + website);
-            console.log("current_time updated to " + time);
         });
 }
