@@ -1,7 +1,7 @@
 {
     "manifest_version": 3, 
     "name": "Website Tracker",
-    "version": "0.0",
+    "version": "0.0.1",
     "description": "Tracks Websites You've Visited",
 
     "action": {
